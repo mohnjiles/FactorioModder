@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -13,9 +14,11 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using FactorioModder.Annotations;
+using FactorioModder.Managers;
 using FactorioModder.Models;
 using FactorioModder.Utility;
 using GalaSoft.MvvmLight.Command;
+using GalaSoft.MvvmLight.Ioc;
 using GalaSoft.MvvmLight.Messaging;
 using GalaSoft.MvvmLight.Threading;
 using Ionic.Zip;
@@ -28,6 +31,7 @@ namespace FactorioModder.ViewModels
     {
 
         private readonly ModsAPIHandler _handler;
+        private readonly ISettingsManager _settingsManager;
 
         public MainViewModel()
         {
@@ -37,17 +41,26 @@ namespace FactorioModder.ViewModels
             CheckedCommand = new ParameterCommand(param => OnModEnabled(param.ToString()));
             UncheckedCommand = new ParameterCommand(param => OnModDisabled(param.ToString()));
             InstallModCommand = new ParameterCommand(param => InstallMod((Mod)param));
+            UninstallModCommand = new ParameterCommand(param => UninstallMod((Mod)param));
+            PlayFactorioCommand = new Command(PlayFactorio);
+
+            ModList = new ObservableCollection<Mod>();
+            ModList.CollectionChanged += (s, e) => { OnPropertyChanged(nameof(ModList)); };
 
             Messenger.Default.Register<UriMessage>(this, ReceiveMessage);
+
+            _settingsManager = SimpleIoc.Default.GetInstance<ISettingsManager>();
         }
 
         #region Properties
 
         public Command WindowLoadedCommand { get; private set; }
         public Command ScrollBarScrolledCommand { get; private set; }
+        public Command PlayFactorioCommand { get; private set; }
         public ParameterCommand CheckedCommand { get; private set; }
         public ParameterCommand UncheckedCommand { get; private set; }
         public ParameterCommand InstallModCommand { get; private set; }
+        public ParameterCommand UninstallModCommand { get; private set; }
 
         public int PagesLoaded { get; set; }
 
@@ -156,6 +169,7 @@ namespace FactorioModder.ViewModels
 
         public async void LoadAnotherPage()
         {
+            if (ModList == null) return;
             var tempList = new List<Mod>(ModList);
             var newList = await _handler.GetModsByPageAsync(++PagesLoaded);
             ModList = new ObservableCollection<Mod>(tempList.Concat(newList).ToList());
@@ -200,7 +214,7 @@ namespace FactorioModder.ViewModels
             }
         }
 
-        private async void InstallMod(Mod mod)
+        private void InstallMod(Mod mod)
         {
             var modFile = mod.Releases[0].Files[0];
             var url = string.IsNullOrEmpty(modFile.Url) || (!string.IsNullOrEmpty(modFile.Mirror) && modFile.Url.Contains(".php")) ? modFile.Mirror : modFile.Url;
@@ -211,27 +225,6 @@ namespace FactorioModder.ViewModels
                 client.Headers.Add(HttpRequestHeader.Referer, "http://www.factoriomods.com/");
 
                 var fileName = Path.GetFileName(uri.LocalPath);
-                //if (fileName.Contains(".php"))
-                //{
-                //    await Task.Run(() =>
-                //    {
-                //        using (Stream stream = client.OpenRead(uri))
-                //        {
-                //            string contentDisposition = client.ResponseHeaders["content-disposition"];
-                //            if (!string.IsNullOrEmpty(contentDisposition))
-                //            {
-                //                string lookFor = "filename*=UTF-8";
-                //                int index = contentDisposition.IndexOf(lookFor,
-                //                    StringComparison.CurrentCultureIgnoreCase);
-                //                if (index >= 0)
-                //                    fileName =
-                //                        contentDisposition.Substring(index + lookFor.Length)
-                //                            .Replace("\"", "")
-                //                            .Replace("'", "");
-                //            }
-                //        }
-                //    });
-                //}
                 client.DownloadFileAsync(uri, Path.Combine(Utilities.GetFactorioModPath(), fileName));
                 client.DownloadProgressChanged += (sender, args) =>
                 {
@@ -241,16 +234,27 @@ namespace FactorioModder.ViewModels
                 client.DownloadFileCompleted += async (sender, args) =>
                 {
                     var fileLocation = Path.Combine(Utilities.GetFactorioModPath(), fileName);
-                    var zipFileFinalName = string.Empty;
                     try
                     {
-                        using (ZipFile zip = ZipFile.Read(fileLocation))
+                        string zipFileFinalName = string.Empty;
+                        using (var zip = ZipFile.Read(fileLocation))
                         {
-                            ZipEntry e = zip[0];
-                            var modFolderName = e.FileName;
-                            zipFileFinalName = modFolderName.Replace("/", ".zip");
-                        }
+                            var e = zip[0];
 
+                            if (e.IsDirectory)
+                            {
+                                var modFolderName = e.FileName;
+                                zipFileFinalName = modFolderName.Replace("/", ".zip");
+                            }
+                            else
+                            {
+                                foreach (var modFolderName in from entry in zip.Entries where e.IsDirectory select entry.FileName)
+                                {
+                                    zipFileFinalName = modFolderName.Replace("/", ".zip");
+                                    break;
+                                }
+                            }
+                        }
                         File.Move(fileLocation, Path.Combine(Utilities.GetFactorioModPath(), zipFileFinalName));
                     }
                     catch (Exception ex)
@@ -261,13 +265,49 @@ namespace FactorioModder.ViewModels
                     }
 
 
-                    ModInstallMessage = $"{mod.Name} installed.";
+                    ModInstallMessage = $"{mod.Title} installed.";
                     OnModEnabled(mod.Name);
                     mod.Enabled = true;
-                    OnPropertyChanged(nameof(ModList));
+                    mod.Installed = true;
+                    //var index = ModList.IndexOf(mod);
+                    //ModList.Remove(mod);
+                    //ModList.Insert(index, mod);
+                    //await LoadModList();
                     await LoadInstalledModList();
                 };
 
+            }
+        }
+
+        private void UninstallMod(Mod mod)
+        {
+            try
+            {
+                File.Delete(Path.Combine(Utilities.GetFactorioModPath(), $"{mod.Name}_{mod.Version}.zip"));
+                InstalledModList.Remove(mod);
+                OnModDisabled(mod.Name);
+
+                var webMod = ModList.FirstOrDefault(x => x.Name == mod.Name);
+                if (webMod != null)
+                    webMod.Installed = false;
+
+                ModInstallMessage = $"{mod.Title} uninstalled successfully.";
+            }
+            catch (Exception ex)
+            {
+                ModInstallMessage = $"Unable to delete {mod.Title}: {ex.Message}";
+            }
+        }
+
+        private void PlayFactorio()
+        {
+            try
+            {
+                Process.Start(_settingsManager.Settings.FactorioInstallPath);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Unable to start Factorio: {ex.Message}");
             }
         }
 

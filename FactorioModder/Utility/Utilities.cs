@@ -3,9 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Windows;
 using FactorioModder.Models;
 using Ionic.Zip;
+using Microsoft.Win32;
 using Newtonsoft.Json;
 
 namespace FactorioModder.Utility
@@ -75,6 +78,54 @@ namespace FactorioModder.Utility
         private static bool IsModEnabled(string name)
         {
             return GetInstalledMods().Mods.FirstOrDefault(x => x.Name == name)?.Enabled ?? false;
+        }
+
+        public static async Task<string> GetFactorioInstallPath()
+        {
+            return await Task.Run(() =>
+            {
+                foreach (var folder in LibraryFolders())
+                {
+                    var files = Directory.EnumerateFiles(folder, "Factorio.exe", SearchOption.AllDirectories);
+                    if (files.ToList().Count > 0)
+                    {
+                        return files.FirstOrDefault();
+                    }
+                }
+                return "";
+            });
+        }
+
+        private static string SteamFolder()
+        {
+            RegistryKey steamKey = Registry.LocalMachine.OpenSubKey("Software\\Valve\\Steam") ?? Registry.LocalMachine.OpenSubKey("Software\\Wow6432Node\\Valve\\Steam");
+            return steamKey.GetValue("InstallPath").ToString();
+        }
+
+        private static List<string> LibraryFolders()
+        {
+            List<string> folders = new List<string>();
+
+            string steamFolder = SteamFolder();
+            folders.Add(steamFolder);
+
+            string configFile = steamFolder + "\\config\\config.vdf";
+
+            Regex regex = new Regex("BaseInstallFolder[^\"]*\"\\s*\"([^\"]*)\"");
+            using (StreamReader reader = new StreamReader(configFile))
+            {
+                string line;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    Match match = regex.Match(line);
+                    if (match.Success)
+                    {
+                        folders.Add(Regex.Unescape(match.Groups[1].Value));
+                    }
+                }
+            }
+
+            return folders;
         }
     }
 }

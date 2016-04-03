@@ -14,6 +14,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using FactorioModder.ViewModels;
+using GalaSoft.MvvmLight.Messaging;
 using MahApps.Metro.Controls;
 
 namespace FactorioModder
@@ -30,6 +31,14 @@ namespace FactorioModder
             MainViewModel = new MainViewModel();
 
             DataContext = MainViewModel;
+
+
+            Messenger.Default.Register<string>(this, ProcessMessage);
+        }
+
+        private void ProcessMessage(string obj)
+        {
+
         }
 
         private MainViewModel _mainViewModel;

@@ -6,8 +6,10 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
+using FactorioModder.Managers;
 using FactorioModder.Models;
 using FactorioModder.Utility;
+using GalaSoft.MvvmLight.Ioc;
 using GalaSoft.MvvmLight.Messaging;
 using GalaSoft.MvvmLight.Threading;
 
@@ -34,6 +36,8 @@ namespace FactorioModder
                     Shutdown();
                 }
             }
+
+            SimpleIoc.Default.Register<ISettingsManager, SettingsManager>(true);
         }
     }
 }

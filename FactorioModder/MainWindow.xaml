@@ -8,7 +8,7 @@
         xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
         xmlns:intr="clr-namespace:System.Windows.Interactivity;assembly=System.Windows.Interactivity" 
         mc:Ignorable="d"
-        Title="Factorio Modder" Height="350" Width="525" Background="#252525">
+        Title="Factorio Modder" Height="500" Width="625" Background="#252525">
     <Window.Resources>
         <converters:ListToStringConverter x:Key="ListToStringConverter"/>
         <converters:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
@@ -34,26 +34,33 @@
                 <Button Content="{Binding Installed, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource InstalledStringConverter}}" Margin="5"
                         IsEnabled="{Binding Installed, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource InverseBooleanConverter}}"
                         Command="{Binding ElementName=MainGrid, Path=DataContext.InstallModCommand}" 
-                        CommandParameter="{Binding}" Grid.Column="1" />
+                        CommandParameter="{Binding}" Grid.Column="1" Width="90" HorizontalAlignment="Right"/>
             </Grid>
         </DataTemplate>
 
         <DataTemplate x:Key="InstalledModItemTemplate">
             <Grid Background="Transparent" Width="Auto" Height="Auto">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="179*"/>
+                    <ColumnDefinition Width="155*"/>
+                </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="40*"/>
                     <RowDefinition Height="21*"/>
                     <RowDefinition Height="47*"/>
                 </Grid.RowDefinitions>
-                <TextBlock FontSize="18" Height="Auto" VerticalAlignment="Stretch" Grid.Row="0" Padding="5">
+                <TextBlock FontSize="18" Height="Auto" VerticalAlignment="Stretch" Grid.Row="0" Padding="5" Grid.ColumnSpan="2">
                     <Run Text="{Binding Title, FallbackValue=Title}"/>
                     <Run Text="v"/><Run Text="{Binding Version}"/>
                 </TextBlock>
-                <TextBlock Text="{Binding Description, FallbackValue=Description}" TextWrapping="Wrap" Height="Auto" Grid.Row="1" Padding="5,3,3,3"/>
-                <controls:ToggleSwitch Width="150" HorizontalAlignment="Right" IsChecked="{Binding Enabled}" 
+                <TextBlock Text="{Binding Description, FallbackValue=Description}" TextWrapping="Wrap" Height="Auto" Grid.Row="1" Padding="5,3,3,3" Grid.ColumnSpan="2"/>
+                <controls:ToggleSwitch Width="Auto" HorizontalAlignment="Left" IsChecked="{Binding Enabled}" 
                                        CheckedCommand="{Binding ElementName=MainGrid, Path=DataContext.CheckedCommand}" CheckedCommandParameter="{Binding Name}"
                                        UnCheckedCommand="{Binding ElementName=MainGrid, Path=DataContext.UncheckedCommand}" UnCheckedCommandParameter="{Binding Name}"
-                                       Grid.Row="2" OnLabel="Enabled" OffLabel="Disabled"/>
+                                       Grid.Row="2" OnLabel="Enabled" OffLabel="Disabled" Grid.Column="0" Margin="4.666,0,0,0"/>
+                <Button Content="Uninstall" Margin="5"
+                        Command="{Binding ElementName=MainGrid, Path=DataContext.UninstallModCommand}" 
+                        CommandParameter="{Binding}" Grid.Column="1" Width="90" HorizontalAlignment="Right"/>
             </Grid>
         </DataTemplate>
     </Window.Resources>
@@ -71,7 +78,7 @@
                 <ListBox Margin="10,10,10,0" Background="Transparent" ItemsSource="{Binding InstalledModList}" ItemTemplate="{StaticResource InstalledModItemTemplate}" ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
             </TabItem>
             <TabItem Header="Browse Mods" Margin="5,0,-5,0">
-                <ListBox Margin="10,10,10,0" Background="Transparent" ItemsSource="{Binding ModList}" ItemTemplate="{StaticResource ModItemTemplate}"
+                <ListBox Name="ModsListBox" Margin="10,10,10,0" Background="Transparent" ItemsSource="{Binding ModList}" ItemTemplate="{StaticResource ModItemTemplate}"
                          ScrollViewer.ScrollChanged="ScrollViewer_OnScrollChanged"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
             </TabItem>
@@ -79,6 +86,7 @@
         <TextBlock Grid.Row="1" Grid.Column="0" Foreground="White" Margin="5">
             <Run Text="{Binding ModInstallMessage, FallbackValue=Installing Mod...}"/>
         </TextBlock>
+        <Button x:Name="button" Command="{Binding PlayFactorioCommand}"  Content="Play Factorio" Background="#1585b5" FontSize="12"  Foreground="White" Grid.Column="1" Grid.Row="0" Margin="276,10,10,404"/>
         <controls:MetroProgressBar Value="{Binding ModInstallProgress, FallbackValue=50}" Margin="5,10,5,11" Grid.Column="1" Grid.Row="1" Height="6"/>
 
     </Grid>
