@@ -8,17 +8,11 @@ using System.Windows.Data;
 
 namespace FactorioModder.Converters
 {
-    public class ListToStringConverter : IValueConverter
+    public class InstalledStringConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            if (targetType != typeof(string))
-                throw new InvalidOperationException("The target must be a string");
-
-            if (value == null)
-                return "";
-
-            return string.Join(", ", ((List<string>)value).ToArray());
+            return (bool) value ? "Installed" : "Install";
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

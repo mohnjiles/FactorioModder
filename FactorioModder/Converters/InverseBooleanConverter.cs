@@ -8,17 +8,14 @@ using System.Windows.Data;
 
 namespace FactorioModder.Converters
 {
-    public class ListToStringConverter : IValueConverter
+    public class InverseBooleanConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            if (targetType != typeof(string))
-                throw new InvalidOperationException("The target must be a string");
+            if (targetType == typeof (bool))
+                return !((bool) value);
 
-            if (value == null)
-                return "";
-
-            return string.Join(", ", ((List<string>)value).ToArray());
+            return value;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

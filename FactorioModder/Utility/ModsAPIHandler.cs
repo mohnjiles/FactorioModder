@@ -22,6 +22,16 @@ namespace FactorioModder.Utility
                 list = JsonConvert.DeserializeObject<List<Mod>>(json);
             }
 
+            var installedMods = Utilities.GetInstalledModList();
+
+            foreach (var mod in installedMods)
+            {
+                var matchingMod = list.FirstOrDefault(x => x.Name == mod.Name);
+                if (matchingMod != null)
+                {
+                    matchingMod.Installed = true;
+                }
+            }
 
             return list;
         }

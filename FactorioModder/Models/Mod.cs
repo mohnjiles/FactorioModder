@@ -17,6 +17,9 @@ namespace FactorioModder.Models
         public string Name { get; set; }
         public string Description { get; set; }
         public string Homepage { get; set; }
+        public string Version { get; set; }
+        public bool Enabled { get; set; }
+        public bool Installed { get; set; }
         public List<Release> Releases { get; set; }
     }
 }
